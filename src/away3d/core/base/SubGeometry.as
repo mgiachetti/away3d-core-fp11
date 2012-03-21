@@ -69,6 +69,9 @@
 		protected var _numTriangles : uint;
 		private var _uvScaleV : Number = 1;
 		private var _customElementsPerVertex : int;
+		
+		//@MOD: variables mias
+		private var _nroLayer : int;
 
 
 		/**
@@ -76,6 +79,16 @@
 		 */
 		public function SubGeometry()
 		{
+		}
+
+		public function get nroLayer():int
+		{
+			return _nroLayer;
+		}
+
+		public function set nroLayer(value:int):void
+		{
+			_nroLayer = value;
 		}
 
 		/**
