@@ -151,6 +151,17 @@ package away3d.loaders.parsers
 			
 			_byteData = getByteData();
 			
+			//@MOD: Se agrego el soporte para bmp
+			_byteData.position = 0;
+			if (_byteData.readShort() == 0x424D)
+			{
+				//es un bmp, hay que hacerle un manejo propio
+				_data = MGImageLoader.LoadBMPFromStream(_byteData);
+				return false;
+			}
+			
+			_byteData.position = 0;
+			
 			if (!_startedParsing) {
 
 				_loader = new Loader();
