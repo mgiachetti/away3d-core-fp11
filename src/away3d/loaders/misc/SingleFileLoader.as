@@ -11,6 +11,7 @@ package away3d.loaders.misc
 	import flash.events.Event;
 	import flash.events.EventDispatcher;
 	import flash.events.IOErrorEvent;
+	import flash.events.ProgressEvent;
 	import flash.net.URLLoader;
 	import flash.net.URLLoaderDataFormat;
 	import flash.net.URLRequest;
@@ -36,6 +37,9 @@ package away3d.loaders.misc
 		private var _fileName : String;
 		private var _loadAsRawData : Boolean;
 		private var _data : *;
+		
+		//@MOD: variable mia
+		private var _actualUrl:String = "";
 		
 		// Image parser only parser that is added by default, to save file size.
 		private static var _parsers : Vector.<Class> = Vector.<Class>([ ImageParser ]);
@@ -128,7 +132,30 @@ package away3d.loaders.misc
 			urlLoader.dataFormat = dataFormat;
 			urlLoader.addEventListener(Event.COMPLETE, handleUrlLoaderComplete);
 			urlLoader.addEventListener(IOErrorEvent.IO_ERROR, handleUrlLoaderError);
+			urlLoader.addEventListener(ProgressEvent.PROGRESS, onProgressDependency)
+			urlLoader.addEventListener(Event.COMPLETE, onProgressComplete);
+			_actualUrl = urlRequest.url;
 			urlLoader.load(urlRequest);
+		}
+		
+		protected function onProgressComplete(event:Event):void
+		{
+			Globals.progressBar.visible = false;			
+		}
+		
+		protected function onProgressDependency(event:ProgressEvent):void
+		{
+			if(!Globals.progressBar.visible)
+				Globals.progressBar.visible = true;
+			
+			Globals.progressBar.setProgress(event.bytesLoaded, event.bytesTotal);
+			var porcentaje:int = 0
+			if(event.bytesTotal > 0)
+				porcentaje = (event.bytesLoaded/event.bytesTotal)*100;
+			
+			Globals.progressBar.label = "Cargando " + FilePath.GetFileName(_actualUrl) + " " + porcentaje + "%";
+			
+			
 		}
 		
 		/**
