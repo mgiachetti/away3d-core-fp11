@@ -32,11 +32,19 @@ package away3d.materials.methods
 
 			_decIndex = decReg.index;
 
-			code += "tex " + depthCol + ", " + _depthMapCoordReg + ", " + depthMapRegister + " <2d, nearest, clamp>\n" +
+			/*code += "tex " + depthCol + ", " + _depthMapCoordReg + ", " + depthMapRegister + " <2d, nearest, clamp>\n" +
 					"dp4 " + depthCol+".z, " + depthCol + ", " + decReg + "\n" +
 					"add " + targetReg + ".w, " + _depthMapCoordReg+".z, " + epsReg+".x\n" +    // offset by epsilon
 
+					"slt " + targetReg + ".w, " + targetReg + ".w, " + depthCol+".z\n";   // 0 if in shadow*/
+			
+			code += "tex " + depthCol + ", " + _depthMapCoordReg + ", " + depthMapRegister + " <2d, nearest, clamp>\n" +
+					"dp4 " + depthCol+".z, " + depthCol + ", " + decReg + "\n" +
+					"add " + targetReg + ".w, " + _depthMapCoordReg+".z, " + epsReg+".x\n" +    // offset by epsilon
+					
 					"slt " + targetReg + ".w, " + targetReg + ".w, " + depthCol+".z\n";   // 0 if in shadow
+					//"mov " + targetReg + ".w, " + epsReg+".y\n";
+
 
 
 			_depthMapIndex = depthMapRegister.index;

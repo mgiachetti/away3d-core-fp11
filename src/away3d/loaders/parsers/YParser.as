@@ -13,6 +13,8 @@ package away3d.loaders.parsers
 	import away3d.textures.BitmapTexture;
 	import away3d.textures.Texture2DBase;
 	
+	import com.mgsoft.mg3dengine.Globals;
+	
 	import flash.net.URLRequest;
 	import flash.utils.ByteArray;
 	import flash.utils.Endian;

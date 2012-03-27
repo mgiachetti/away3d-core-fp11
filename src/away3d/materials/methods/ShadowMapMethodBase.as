@@ -48,7 +48,7 @@ package away3d.materials.methods
 			castingLight.castsShadows = true;
 			_shadowMapper = castingLight.shadowMapper;
 			var eps : Number = _usePoint? -.01 : -.002;
-			_data = Vector.<Number>([1.0, 1/255.0, 1/65025.0, 1/16581375.0, eps, 0, 0, 1, 0, 0, 0, 1]);
+			_data = Vector.<Number>([1.0, 1/255.0, 1/65025.0, 1/16581375.0, eps, 0.08, 0, 1, 0, 0, 0, 1]);
 		}
 
 		/**
