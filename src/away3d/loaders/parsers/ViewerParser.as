@@ -10,10 +10,15 @@ package away3d.loaders.parsers
 	import away3d.materials.TextureMaterial;
 	import away3d.materials.lightpickers.LightPickerBase;
 	import away3d.materials.lightpickers.StaticLightPicker;
+	import away3d.materials.methods.EnvMapAmbientMethod;
+	import away3d.materials.methods.EnvMapMethod;
 	import away3d.materials.methods.FilteredShadowMapMethod;
 	import away3d.materials.methods.SoftShadowMapMethod;
 	import away3d.textures.BitmapTexture;
 	import away3d.textures.Texture2DBase;
+	
+	import com.mgsoft.mg3dengine.FilePath;
+	import com.mgsoft.mg3dengine.Globals;
 	
 	import flash.geom.Matrix3D;
 	import flash.net.URLRequest;
@@ -115,12 +120,11 @@ package away3d.loaders.parsers
 					{
 						_meshes[i].geometry = mesh.geometry;
 						_meshes[i].material = mesh.material;
-						_meshes[i].bounds = mesh.bounds;
-						_meshes[i].pivotPoint = mesh.pivotPoint;
+						_meshes[i].bounds = mesh.bounds.clone();
+						_meshes[i].pivotPoint = mesh.pivotPoint.clone();
 						_meshes[i].partition = mesh.partition;
 						_meshes[i].transform = worldmatXMesh[i];
-						_meshes[i].showBounds = true;
-						
+						_meshes[i].showBounds = false;
 						
 						for (var j:int = 0; j < _meshes[i].subMeshes.length; j++) 
 						{
@@ -128,6 +132,7 @@ package away3d.loaders.parsers
 							if(layer_tex == -1)
 							{
 								_meshes[i].subMeshes[j].material = mesh.subMeshes[j].material;
+								_meshes[i].subMeshes[j].material.bothSides = true;
 							}
 							else
 							{
@@ -485,8 +490,8 @@ package away3d.loaders.parsers
 			//vacio los vectores
 			clearMeshData();
 			
-			if (meshXMesh[meshXMesh.length-1] == 4)
-				finalizeAsset(mesh);
+			//if (meshXMesh[meshXMesh.length-1] == 4)
+			finalizeAsset(mesh);
 			
 		}
 		

@@ -4,6 +4,8 @@ package away3d.loaders.parsers
 	import away3d.arcane;
 	import away3d.textures.BitmapTexture;
 	
+	import com.mgsoft.mg3dengine.MGImageLoader;
+	
 	import flash.display.Bitmap;
 	import flash.display.Loader;
 	import flash.events.Event;

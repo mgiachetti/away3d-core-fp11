@@ -15,6 +15,7 @@ package away3d.loaders.misc
 	import flash.net.URLLoader;
 	import flash.net.URLLoaderDataFormat;
 	import flash.net.URLRequest;
+	import com.mgsoft.mg3dengine.FilePath;
 
 	use namespace arcane;
 	
@@ -140,21 +141,21 @@ package away3d.loaders.misc
 		
 		protected function onProgressComplete(event:Event):void
 		{
-			Globals.progressBar.visible = false;			
+			//Globals.progressBar.visible = false;			
 		}
 		
 		protected function onProgressDependency(event:ProgressEvent):void
 		{
-			if(!Globals.progressBar.visible)
-				Globals.progressBar.visible = true;
+			/*if(!Globals.progressBar.visible)
+			//	Globals.progressBar.visible = true;
 			
-			Globals.progressBar.setProgress(event.bytesLoaded, event.bytesTotal);
+			//Globals.progressBar.setProgress(event.bytesLoaded, event.bytesTotal);
 			var porcentaje:int = 0
 			if(event.bytesTotal > 0)
 				porcentaje = (event.bytesLoaded/event.bytesTotal)*100;
 			
 			Globals.progressBar.label = "Cargando " + FilePath.GetFileName(_actualUrl) + " " + porcentaje + "%";
-			
+			*/
 			
 		}
 		
