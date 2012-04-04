@@ -13,7 +13,7 @@ package away3d.loaders.parsers
 	import away3d.textures.BitmapTexture;
 	import away3d.textures.Texture2DBase;
 	
-	import com.mgsoft.mg3dengine.Globals;
+	import com.mgsoft.mg3dengine.MG3DGlobals;
 	
 	import flash.net.URLRequest;
 	import flash.utils.ByteArray;
@@ -318,7 +318,7 @@ package away3d.loaders.parsers
 				
 				name = _byteData.readUTFBytes(256);
 				//name = name.substring(0, name.search('\0'));
-				url = Globals.TEXTURE_FOLDER + name;
+				url = MG3DGlobals.TEXTURE_FOLDER + name;
 				//url = "http://www.lepton.com.ar/download/armarius/texturas/05-nogal.jpg";
 				//url = "http://www.lepton.com.ar/download/armarius/texturas/05-nogal.bmp";
 				

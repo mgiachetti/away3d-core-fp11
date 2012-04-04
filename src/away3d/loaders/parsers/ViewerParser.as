@@ -18,7 +18,7 @@ package away3d.loaders.parsers
 	import away3d.textures.Texture2DBase;
 	
 	import com.mgsoft.mg3dengine.FilePath;
-	import com.mgsoft.mg3dengine.Globals;
+	import com.mgsoft.mg3dengine.MG3DGlobals;
 	
 	import flash.geom.Matrix3D;
 	import flash.net.URLRequest;
@@ -178,11 +178,11 @@ package away3d.loaders.parsers
 						_meshes[i].subMeshes[0].material = new TextureMaterial(asset, true, true);
 						_meshes[i].subMeshes[0].material.bothSides = true;
 						//trace(Globals.lights);
-						_meshes[i].subMeshes[0].material.lightPicker = new StaticLightPicker(Globals.lights);
+						_meshes[i].subMeshes[0].material.lightPicker = new StaticLightPicker(MG3DGlobals.lights);
 						//_meshes[i].subMeshes[0].material.lightPicker.directionalLights.push(Globals.light);
 						//((_meshes[i].subMeshes[0].material) as TextureMaterial).shadowMethod = new FilteredShadowMapMethod(Globals.light);
 						//((_meshes[i].subMeshes[0].material) as TextureMaterial).shadowMethod = new SoftShadowMapMethod(Globals.light);
-						((_meshes[i].subMeshes[0].material) as TextureMaterial).shadowMethod = Globals.shadowMethod;
+						((_meshes[i].subMeshes[0].material) as TextureMaterial).shadowMethod = MG3DGlobals.shadowMethod;
 						
 						
 						
@@ -480,7 +480,7 @@ package away3d.loaders.parsers
 			
 			geometry.addSubGeometry(subGeometry);
 			mesh = new Mesh(geometry);
-			mesh.material = new TextureMaterial( new BitmapTexture(defaultBitmapData) );
+			mesh.material = new TextureMaterial( new BitmapTexture(defaultBitmapData), true, true );
 			//mesh.material = new ColorMaterial(100*_meshes.length);
 			mesh.material.bothSides = true;
 			
@@ -514,7 +514,7 @@ package away3d.loaders.parsers
 				file = file.substring(file.lastIndexOf("texturas") + 9);
 				
 				meshesID.push(lineTokens[0]);
-				addDependency(lineTokens[0], new URLRequest(Globals.TEXTURE_FOLDER + file));
+				addDependency(lineTokens[0], new URLRequest(MG3DGlobals.TEXTURE_FOLDER + file));
 				
 				//string path = @"c:\test\" + Path.GetFileNameWithoutExtension(lineTokens[0]) + ".y";
 				//string path = lineTokens[0];
@@ -553,7 +553,7 @@ package away3d.loaders.parsers
 				texturas.push(null);
 				
 				if(FilePath.GetExtension(file).toLowerCase() != ".msh")
-					addDependency(lineTokens[0], new URLRequest(Globals.TEXTURE_FOLDER + file));
+					addDependency(lineTokens[0], new URLRequest(MG3DGlobals.TEXTURE_FOLDER + file));
 				
 				
 				//Texture2D tex = ResourceUtils.GetTexture(Globals.Instance.D3dDevice, lineTokens[0]);
