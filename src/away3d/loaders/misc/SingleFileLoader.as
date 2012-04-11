@@ -47,7 +47,7 @@ package away3d.loaders.misc
 		
 		
 		/**
-		 * Creates a new AssetLoader object.
+		 * Creates a new SingleFileLoader object.
 		 */
 		public function SingleFileLoader()
 		{
@@ -90,6 +90,7 @@ package away3d.loaders.misc
 		
 		/**
 		 * Load a resource from a file.
+		 * 
 		 * @param urlRequest The URLRequest object containing the URL of the object to be loaded.
 		 * @param parser An optional parser object that will translate the loaded data into a usable resource. If not provided, AssetLoader will attempt to auto-detect the file type.
 		 */
