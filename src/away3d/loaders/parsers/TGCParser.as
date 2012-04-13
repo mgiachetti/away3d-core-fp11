@@ -115,6 +115,10 @@ package away3d.loaders.parsers
 			var cant_materials : int  = int(materialsTag.@count);
 			for each (var matTag:XML in materialsTag.m) 
 			{
+				if(matTag.@type == "Multimaterial")
+					matTag = matTag.subM[0];
+				
+				
 				var mat : TextureMaterial = new TextureMaterial();
 				//TODO: Este mat.ambient es un number
 				//REVEER Todos los parametros del material
@@ -184,7 +188,9 @@ package away3d.loaders.parsers
 			{
 				mvertices.push(vertices[i*3]*10, vertices[i*3 + 1]*10, vertices[i*3 + 2]*10);
 				mnormals.push(normals[i*3], normals[i*3 + 1], normals[i*3 + 2]);
-				mtexCoords.push(texCoords[i*2], texCoords[i*2 + 1]);
+				//mtexCoords.push(texCoords[i*2], texCoords[i*2 + 1]);
+				var texid : int = textCoordsIdx[coordinatesIdx.indexOf(i)]*2;
+				mtexCoords.push(texCoords[texid], texCoords[texid + 1]);
 			}
 			
 			for each (var j:int in coordinatesIdx) 
