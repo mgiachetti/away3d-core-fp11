@@ -119,7 +119,7 @@ package away3d.loaders.parsers
 					matTag = matTag.subM[0];
 				
 				
-				var mat : TextureMaterial = new TextureMaterial();
+				var mat : TextureMaterial = new TextureMaterial(null,true,true);
 				//TODO: Este mat.ambient es un number
 				//REVEER Todos los parametros del material
 				mat.ambient = parseColor(matTag.ambient);
@@ -168,7 +168,7 @@ package away3d.loaders.parsers
 			var mtexCoords : Vector.<Number> = new Vector.<Number>();
 			var mindex : Vector.<uint> = new Vector.<uint>();
 			
-			/*for each (var i:int in coordinatesIdx) 
+			for each (var i:int in coordinatesIdx) 
 			{	
 				mvertices.push(vertices[i*3]*10, vertices[i*3 + 1]*10, vertices[i*3 + 2]*10);
 				mnormals.push(normals[i*3], normals[i*3 + 1], normals[i*3 + 2]);
@@ -179,12 +179,12 @@ package away3d.loaders.parsers
 				mtexCoords.push(texCoords[i*2], texCoords[i*2 + 1]);
 			}
 			
-			for (var j:int = 0; j < mvertices.length; j++) 
+			for (var j:int = 0; j < mvertices.length/3; j++) 
 			{
 				mindex.push(j);					
-			}*/
+			}
 			
-			for (var i:int = 0; i < vertices.length/3; i++) 
+			/*for (var i:int = 0; i < vertices.length/3; i++) 
 			{
 				mvertices.push(vertices[i*3]*10, vertices[i*3 + 1]*10, vertices[i*3 + 2]*10);
 				mnormals.push(normals[i*3], normals[i*3 + 1], normals[i*3 + 2]);
@@ -196,7 +196,7 @@ package away3d.loaders.parsers
 			for each (var j:int in coordinatesIdx) 
 			{
 				mindex.push(j);					
-			}
+			}*/
 			
 			mesh.material = _materials[0];
 			subGeometry.updateVertexData(mvertices);
