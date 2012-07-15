@@ -178,14 +178,8 @@ package away3d.loaders.parsers
 						_meshes[i].subMeshes[0].material = new TextureMaterial(asset, true, true);
 						_meshes[i].subMeshes[0].material.bothSides = true;
 						//trace(Globals.lights);
-						_meshes[i].subMeshes[0].material.lightPicker = new StaticLightPicker(MG3DGlobals.lights);
-						//_meshes[i].subMeshes[0].material.lightPicker.directionalLights.push(Globals.light);
-						//((_meshes[i].subMeshes[0].material) as TextureMaterial).shadowMethod = new FilteredShadowMapMethod(Globals.light);
-						//((_meshes[i].subMeshes[0].material) as TextureMaterial).shadowMethod = new SoftShadowMapMethod(Globals.light);
-						((_meshes[i].subMeshes[0].material) as TextureMaterial).shadowMethod = MG3DGlobals.shadowMethod;
-						
-						
-						
+						//_meshes[i].subMeshes[0].material.lightPicker = new StaticLightPicker(MG3DGlobals.lights);
+						//((_meshes[i].subMeshes[0].material) as TextureMaterial).shadowMethod = MG3DGlobals.shadowMethod;
 						
 					}
 					
