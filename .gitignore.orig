@@ -1,0 +1,14 @@
+/.flexLibProperties
+/target
+/.project
+/.settings
+/.actionScriptProperties
+<<<<<<< HEAD
+/.svn
+*.svn*
+
+
+=======
+*.iml
+out
+>>>>>>> upstream/master

@@ -1,8 +1,9 @@
 /.flexLibProperties
 /target
 /.project
+/.settings
 /.actionScriptProperties
+*.iml
+out
 /.svn
 *.svn*
-
-

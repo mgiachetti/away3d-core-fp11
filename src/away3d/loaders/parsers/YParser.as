@@ -1,15 +1,14 @@
 package away3d.loaders.parsers
 {
 	import away3d.animators.VertexAnimator;
-	import away3d.animators.data.VertexAnimation;
 	import away3d.animators.data.VertexAnimationMode;
-	import away3d.animators.data.VertexAnimationState;
 	import away3d.arcane;
 	import away3d.core.base.Geometry;
 	import away3d.core.base.SubGeometry;
 	import away3d.entities.Mesh;
 	import away3d.loaders.misc.ResourceDependency;
 	import away3d.materials.TextureMaterial;
+	import away3d.materials.utils.DefaultMaterialManager;
 	import away3d.textures.BitmapTexture;
 	import away3d.textures.Texture2DBase;
 	
@@ -121,7 +120,7 @@ package away3d.loaders.parsers
 			// TODO: not used
 			resourceDependency = resourceDependency; 			
 			// apply system default
-			TextureMaterial(_mesh.material).texture = new BitmapTexture(defaultBitmapData);
+			TextureMaterial(_mesh.material).texture = DefaultMaterialManager.getDefaultTexture();
 		} 
 		
 		
@@ -141,8 +140,8 @@ package away3d.loaders.parsers
 					
 					// TODO: Create a mesh only when encountered (if it makes sense
 					// for this file format) and return it using finalizeAsset()
-					_mesh = new Mesh;
-					_mesh.material = new TextureMaterial( new BitmapTexture(defaultBitmapData) );
+					_mesh = new Mesh(new Geometry());
+					_mesh.material = new TextureMaterial( DefaultMaterialManager.getDefaultTexture() );
 					_mesh.material.bothSides = true;
 					
 					_geometry = _mesh.geometry;
@@ -228,7 +227,7 @@ package away3d.loaders.parsers
 			}
 			
 			//le agrego un padre para que no lo dibuje en pantalla con la posicion 0,0,0
-			_mesh.setParent(new Mesh());
+			_mesh.setParent(new Mesh(new Geometry()));
 			
 			_createMesh = true;
 		}

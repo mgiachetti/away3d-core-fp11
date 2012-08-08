@@ -14,6 +14,7 @@ package away3d.loaders.parsers
 	import away3d.materials.methods.EnvMapMethod;
 	import away3d.materials.methods.FilteredShadowMapMethod;
 	import away3d.materials.methods.SoftShadowMapMethod;
+	import away3d.materials.utils.DefaultMaterialManager;
 	import away3d.textures.BitmapTexture;
 	import away3d.textures.Texture2DBase;
 	
@@ -474,7 +475,7 @@ package away3d.loaders.parsers
 			
 			geometry.addSubGeometry(subGeometry);
 			mesh = new Mesh(geometry);
-			mesh.material = new TextureMaterial( new BitmapTexture(defaultBitmapData), true, true );
+			mesh.material = new TextureMaterial( DefaultMaterialManager.getDefaultTexture(), true, true );
 			//mesh.material = new ColorMaterial(100*_meshes.length);
 			mesh.material.bothSides = true;
 			
