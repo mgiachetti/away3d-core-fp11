@@ -37,8 +37,8 @@ package away3d.loaders.parsers
 	{
 		private var _textData:String;
 		
-		private var _charIndex:uint;
-		private var _oldIndex:uint;
+		private var _charIndex:int;
+		private var _oldIndex:int;
 		private var _stringLength:uint;
 		
 		//private var _currentObject : ObjectGroup;
