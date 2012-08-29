@@ -548,7 +548,10 @@ package away3d.loaders.parsers
 				texturas.push(null);
 				
 				if(FilePath.GetExtension(file).toLowerCase() != ".msh")
+				{
+					file = FilePath.ChangeExtension(file,".jpg");
 					addDependency(lineTokens[0], new URLRequest(MG3DGlobals.TEXTURE_FOLDER + file));
+				}
 				
 				
 				//Texture2D tex = ResourceUtils.GetTexture(Globals.Instance.D3dDevice, lineTokens[0]);

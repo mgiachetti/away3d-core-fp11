@@ -3,6 +3,7 @@ package away3d.loaders.parsers
 {
 	import away3d.arcane;
 	import away3d.textures.BitmapTexture;
+	
 	import com.mgsoft.mg3dengine.MGImageLoader;
 	
 	import flash.display.Bitmap;
@@ -119,7 +120,8 @@ package away3d.loaders.parsers
 		 */
 		private function onLoadComplete(event : Event) : void
 		{
-			var asset : BitmapTexture = new BitmapTexture(Bitmap(_loader.content).bitmapData);
+			
+			var asset : BitmapTexture = new BitmapTexture(MGImageLoader.stretchBitmap2(Bitmap(_loader.content)).bitmapData);
 			_loader.contentLoaderInfo.removeEventListener(Event.COMPLETE, onLoadComplete);
 			_doneParsing = true;
 			finalizeAsset(asset, _fileName);

@@ -5,7 +5,7 @@ package away3d.materials.methods
 	import away3d.materials.utils.ShaderRegisterCache;
 	import away3d.materials.utils.ShaderRegisterElement;
 	import away3d.textures.Texture2DBase;
-
+	
 	import flash.display3D.Context3D;
 	import flash.display3D.Context3DProgramType;
 
@@ -251,10 +251,102 @@ package away3d.materials.methods
 			if (_useTexture) {
 				_diffuseInputRegister = regCache.getFreeTextureReg();
 				vo.texturesIndex = _diffuseInputRegister.index;
-				code += getTexSampleCode(vo, t, _diffuseInputRegister);
+				cutOffReg = regCache.getFreeFragmentConstant();
+				vo.fragmentConstantsIndex = cutOffReg.index*4;
+				var c : ShaderRegisterElement = cutOffReg;//regCache.getFreeFragmentConstant();
+				
+				var temp : String = "ft7";
+				
+				code += "div "+ t +".xy, "+ UVFragmentReg +".xy, "+ c +".y\n";
+				code += "frc "+ t +".xy, "+ t +".xy\n";
+				
+				code += "sge "+ temp +".x, "+ t +".x, "+ c +".z\n";
+				code += "sge "+ temp +".y, "+ t +".y, "+ c +".z\n";
+				code += "slt "+ temp +".z, "+ t +".x, "+ c +".z\n";
+				code += "slt "+ temp +".w, "+ t +".y, "+ c +".z\n";
+				
+				code += "neg "+ temp +".xy, "+ temp +".xy\n";
+				
+				code += "mul "+ temp +".x, "+ UVFragmentReg +".x, "+ temp +".x\n";
+				code += "mul "+ temp +".y, "+ UVFragmentReg +".y, "+ temp +".y\n";				
+				code += "mul "+ temp +".z, "+ UVFragmentReg +".x, "+ temp +".z\n";
+				code += "mul "+ temp +".w, "+ UVFragmentReg +".y, "+ temp +".w\n";
+				
+				code += "add "+ t +".xy, "+ temp +".xy, "+ temp +".zw\n"; 				
+				
+				
+				
+				//obtengo la coordenada u
+				//code += "seq "+ t +".z, "+ UVFragmentReg +".x, "+ UVFragmentReg +".x\n";
+				//code += "add "+ t +".w, "+ t +".z, "+ t +".z\n";
+				
+				//code += "mov "+ t +".xy, "+ UVFragmentReg +".xy\n";
+				
+				//code += "div "+ t +".x, "+ UVFragmentReg +".x, "+ t +".w\n";
+				//code += "frc "+ t +".x, "+ t +".x\n";
+				//code += "mul "+ t +".x, "+ t +".x, "+ t +".w\n";//hasta aca esta a = frac(tu/2)*2
+				
+				//code += "sge "+ t +".w, "+ t +".x, "+ t +".z\n";
+				//code += "slt "+ t +".z, "+ t +".x, "+ t +".z\n";
+				//code += "neg "+ t +".w, "+ t +".w\n"; //esto genera a t y p
+				
+				//code += "mul "+ t +".w, "+ UVFragmentReg +".x, "+ t +".w\n";
+				//code += "mul "+ t +".z, "+ UVFragmentReg +".x, "+ t +".z\n";
+				
+				//code += "add "+ t +".x, "+ t +".w, "+ t +".z\n";
+				
+				
+				//obtengo la coordenada v
+				//code += "seq "+ t +".z, "+ UVFragmentReg +".y, "+ UVFragmentReg +".y\n"; //genero un 1 en z
+				//code += "add "+ t +".w, "+ t +".z, "+ t +".z\n"; //genero un 2 en w
+				
+				//code += "mov "+ t +".xy, "+ UVFragmentReg +".xy\n";
+				
+				//code += "div "+ t +".y, "+ UVFragmentReg +".y, "+ t +".w\n";
+				//code += "frc "+ t +".y, "+ t +".y\n";
+				//code += "mul "+ t +".y, "+ t +".y, "+ t +".w\n";//hasta aca esta a = frac(tu/2)*2
+				
+				//code += "sge "+ t +".w, "+ t +".y, "+ t +".z\n";
+				//code += "slt "+ t +".z, "+ t +".y, "+ t +".z\n";
+				//code += "neg "+ t +".w, "+ t +".w\n"; //esto genera a t y p
+				
+				//code += "mul "+ t +".w, "+ UVFragmentReg +".y, "+ t +".w\n";
+				//code += "mul "+ t +".z, "+ UVFragmentReg +".y, "+ t +".z\n";
+				
+				//code += "add "+ t +".y, "+ t +".w, "+ t +".z\n";
+				
+				//code += "frc "+ t +".x, "+ UVFragmentReg +".x\n";
+				//code += "sub "+ t +".x, "+ UVFragmentReg +".x, "+ t +".x\n";
+				//code += "pow "+ t +".z, "+      t        +".z, "+ t +".x\n";
+				//code += "mul "+ t +".x, "+ UVFragmentReg +".x, "+ t +".z\n";
+				
+				//code += "frc "+ t +".x, "+ UVFragmentReg +".x\n";
+				//code += "sub "+ t +".x, "+ UVFragmentReg +".x, "+ t +".x\n";
+				//code += "pow "+ t +".x, "+      t        +".z, "+ t +".x\n";
+				//code += "mul "+ t +".x, "+ UVFragmentReg +".x, "+ t +".x\n";
+				//code += "neg "+ t +".x, "+ t +".x\n";
+				
+				//code += "frc "+ t +".y, "+ UVFragmentReg +".y\n";
+				//code += "sub "+ t +".y, "+ UVFragmentReg +".y, "+ t +".y\n";
+				//code += "pow "+ t +".y, "+      t        +".z, "+ t +".y\n";
+				//code += "mul "+ t +".y, "+ UVFragmentReg +".y, "+ t +".y\n";
+				
+				//code += "sge "+ t +".zw, "+ t +".zw, "+ t +".zw\n";
+				//code += "mov "+ t +".z, fc0.w\n";
+				//code += "mov "+ t +".w, fc0.w\n";
+				//code += "neg "+ t +", "+ t +"\n";
+				//code += "frc "+ t +".xy, "+ UVFragmentReg +".xy\n";
+				//code += "sub "+ t +".xy, "+ UVFragmentReg +".xy, "+ t +".xy\n";
+				//code += "pow "+ t +".xy, "+      c        +".yz, "+ t +".xy\n";
+				//code += "pow "+ t +".xy, "+      t        +".zw, "+ t +".xy\n";
+				//code += "mul "+ t +".xy, "+ UVFragmentReg +".xy, "+ t +".xy\n";
+				//code += "neg "+ t +", "+ t +"\n";
+				//code += "mov "+ t +", fc0\n";
+				//code += "add "+ t +".xy, "+ UVFragmentReg +".xy, "+ t +".xy\n";
+				code += getTexSampleCode(vo, t, _diffuseInputRegister, t);
 				if (_alphaThreshold > 0) {
-					cutOffReg = regCache.getFreeFragmentConstant();
-					vo.fragmentConstantsIndex = cutOffReg.index*4;
+					//cutOffReg = regCache.getFreeFragmentConstant();
+					//vo.fragmentConstantsIndex = cutOffReg.index*4;
 					code += "sub " + t + ".w, " + t + ".w, " + cutOffReg + ".x\n" +
 							"kil " + t + ".w\n" +
 							"add " + t + ".w, " + t + ".w, " + cutOffReg + ".x\n";
@@ -301,6 +393,11 @@ package away3d.materials.methods
 				stage3DProxy.setTextureAt(vo.texturesIndex, _texture.getTextureForStage3D(stage3DProxy));
 				if (_alphaThreshold > 0)
 					vo.fragmentData[vo.fragmentConstantsIndex] = _alphaThreshold;
+				
+				vo.fragmentData[vo.fragmentConstantsIndex+0] = _alphaThreshold;
+				vo.fragmentData[vo.fragmentConstantsIndex+1] = 2;
+				vo.fragmentData[vo.fragmentConstantsIndex+2] = 0.5;
+				vo.fragmentData[vo.fragmentConstantsIndex+3] = 0;
 			}
 			else {
 				var index : int = vo.fragmentConstantsIndex;
