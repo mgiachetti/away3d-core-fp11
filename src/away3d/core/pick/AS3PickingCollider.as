@@ -46,6 +46,7 @@ package away3d.core.pick
 			var Q1Q2:Number, Q1Q1:Number, Q2Q2:Number, RQ1:Number, RQ2:Number;
 			var indexData:Vector.<uint> = subMesh.indexData;
 			var vertexData:Vector.<Number> = subMesh.vertexData;
+			var normalData:Vector.<Number> = subMesh.subGeometry.vertexNormalData;
 			var uvData:Vector.<Number> = subMesh.UVData;
 			var collisionTriangleIndex:int = -1;
 			numTriangles = subMesh.numTriangles;
@@ -80,6 +81,12 @@ package away3d.core.pick
 				nx = s0y * s1z - s0z * s1y; // n = s0 x s1
 				ny = s0z * s1x - s0x * s1z;
 				nz = s0x * s1y - s0y * s1x;
+				
+				//@MOD: Uso la normal propia del triangulo
+				nx = (normalData[i0] + normalData[i1] + normalData[i2])/3;
+				ny = (normalData[i0 + 1] + normalData[i1 + 1] + normalData[i2 + 1])/3;
+				nz = (normalData[i0 + 2] + normalData[i1 + 2] + normalData[i2 + 2])/3;
+					
 				nl = 1 / Math.sqrt( nx * nx + ny * ny + nz * nz ); // normalize n
 				nx *= nl;
 				ny *= nl;

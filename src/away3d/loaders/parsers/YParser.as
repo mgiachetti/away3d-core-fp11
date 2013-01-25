@@ -7,13 +7,21 @@ package away3d.loaders.parsers
 	import away3d.core.base.SubGeometry;
 	import away3d.entities.Mesh;
 	import away3d.loaders.misc.ResourceDependency;
+	import away3d.materials.ColorMaterial;
+	import away3d.materials.MaterialBase;
 	import away3d.materials.TextureMaterial;
+	import away3d.materials.lightpickers.StaticLightPicker;
 	import away3d.materials.utils.DefaultMaterialManager;
 	import away3d.textures.BitmapTexture;
 	import away3d.textures.Texture2DBase;
 	
+	import com.mgsoft.mg3dengine.FilePath;
 	import com.mgsoft.mg3dengine.MG3DGlobals;
+	import com.mgsoft.mg3dengine.MGColorUtils;
+	import com.mgsoft.mg3dengine.MGMaterial;
+	import com.mgsoft.mg3dengine.MGTexturePool;
 	
+	import flash.net.FileReference;
 	import flash.net.URLRequest;
 	import flash.utils.ByteArray;
 	import flash.utils.Endian;
@@ -41,6 +49,7 @@ package away3d.loaders.parsers
 		private var _atributos : Vector.<uint>;
 		
 		private var _materialNames : Vector.<String>;
+		private var _materialData : Vector.<MGMaterial>;
 		private var _mesh : Mesh;
 		private var _geometry : Geometry;
 		
@@ -132,59 +141,66 @@ package away3d.loaders.parsers
 			if(!_startedParsing) {
 				_byteData = getByteData();
 				_startedParsing = true;
+				//(new FileReference()).save(_byteData,FilePath.GetFileName(_fileName));
+				//return true;
 			}
 			
-			while (hasTime()) {
-				if (!_parsedHeader) {
-					_byteData.endian = Endian.LITTLE_ENDIAN;
-					
-					// TODO: Create a mesh only when encountered (if it makes sense
-					// for this file format) and return it using finalizeAsset()
-					_mesh = new Mesh(new Geometry());
-					_mesh.material = new TextureMaterial( DefaultMaterialManager.getDefaultTexture() );
-					_mesh.material.bothSides = true;
-					
-					_geometry = _mesh.geometry;
-					
-					// Parse header and decompress body
-					parseHeader();
-				}
-					
-				else {
-					if (!_parsedLayers) {
-						parseLayers();
+			try
+			{
+				while (hasTime()) {
+					if (!_parsedHeader) {
+						_byteData.endian = Endian.LITTLE_ENDIAN;
+						
+						// TODO: Create a mesh only when encountered (if it makes sense
+						// for this file format) and return it using finalizeAsset()
+						_mesh = new Mesh(new Geometry());
+						_mesh.material = new TextureMaterial( DefaultMaterialManager.getDefaultTexture() );
+						_mesh.material.bothSides = true;
+						
+						_geometry = _mesh.geometry;
+						
+						// Parse header and decompress body
+						parseHeader();
 					}
 						
 					else {
-						if (!_parsedVertices) {
-							parseVertices();
+						if (!_parsedLayers) {
+							parseLayers();
 						}
 							
 						else {
-							if (!_parsedIndices) {
-								parseIndices();
+							if (!_parsedVertices) {
+								parseVertices();
 							}
-							else
-							{
-								if(!_parsedAtributos){
-									parsedAtributos();
-									
-								}									
-								else {
-									
-									buildMesh();
-									finalizeAsset(_mesh);
-									return true;
+								
+							else {
+								if (!_parsedIndices) {
+									parseIndices();
+								}
+								else
+								{
+									if(!_parsedAtributos){
+										parsedAtributos();
+										
+									}									
+									else {
+										
+										buildMesh();
+										finalizeAsset(_mesh, _fileName);
+										return true;
+									}								
 								}								
-							}								
-							
+								
+							}
 						}
 					}
 				}
 			}
-			
-			// TODO: Can this be done a nicer fashion for this file format? Or does
-			// it always just return a single mesh, in which case this should be fine
+			catch(e : Error)
+			{
+				trace("Error con mesh "+ _fileName);
+				return true;
+			}
 			
 			
 			return false;
@@ -192,38 +208,111 @@ package away3d.loaders.parsers
 		
 		private function buildMesh():void
 		{
-			
+			var offsetMat : int = 0;
 			for (var i:int = 0; i < _cant_layers; i++) 
 			{
 				
 				var indices: Vector.<uint> = new Vector.<uint>();
+				var vertTable: Vector.<uint> = new Vector.<uint>(_vertices.length/3);
+				var vertList: Vector.<uint> = new Vector.<uint>();
+				var addLayer: Boolean = false;
+				
+				//si un mesh tiene mas de 65000 vertices esos vertices tinene que estar distribuidos en distintos subset
+				//reubico los vertices para que se puedan poner hasta 65000 vertices por subset
+				
 				for (var j:int = 0; j < _cant_faces; j++) 
 				{
 					if (_atributos[j] == i)
 					{
-						indices.push(j*3);
-						indices.push(j*3 + 1);
-						indices.push(j*3 + 2);
+						if(indices.length < 65500)
+						{
+							for (var i2:int = 0; i2 < 3; i2++) 
+							{
+								var ind : uint = _indices[j*3 + i2];
+								
+								if(vertTable[ind] == 0)
+								{
+									vertList.push(ind);
+									vertTable[ind] = vertList.length;
+								}
+								
+								indices.push(vertTable[ind] - 1);
+							}
+						}
+						else
+						{
+							//como no entra en el vertex buffer lo parto en 2 y agrego otro subset
+							_atributos[j]= _cant_layers;
+							addLayer = true;
+						}
 					}
+				}
+				
+				offsetMat = 0;
+				var nro_mat : int = i + offsetMat;
+				if(addLayer)
+				{
+					_cant_layers++;
 					
+					_materialNames.push(_materialNames[nro_mat]);
+					_materialData.push(_materialData[nro_mat]);
+					
+					_materialNames[_cant_layers+offsetMat-1] = _materialNames[nro_mat];
+					_materialData[_cant_layers+offsetMat-1] = _materialData[nro_mat];
 				}
 				
 				if(indices.length <= 0)
+				{
+					if(_geometry.subGeometries.length == 0)
+						offsetMat--;
 					continue;
+				}
+				
+				var vertices : Vector.<Number> = new Vector.<Number>();
+				var uvs : Vector.<Number> = new Vector.<Number>();
+				var normals : Vector.<Number> = new Vector.<Number>();
+
+				for (var k:int = 0; k < vertList.length; k++) 
+				{
+					ind = vertList[k];
+					vertices.push(_vertices[ind*3],_vertices[ind*3+1],_vertices[ind*3+2]);
+					uvs.push(_uvs[ind*2],_uvs[ind*2+1]);
+					normals.push(_normals[ind*3],_normals[ind*3+1],_normals[ind*3+2]);
+				}
+				
 				
 				//guardo el id para poder identificar el nro_layer con el nro se subgeometry
-				_id_subgeometry.push(i);
+				_id_subgeometry.push(nro_mat);
 				
 				var sub : SubGeometry = new SubGeometry();
 				
 				_geometry.addSubGeometry(sub);
-				sub.updateVertexData(_vertices);
-				sub.updateUVData(_uvs);
-				sub.updateVertexNormalData(_normals);					
+				//sub.updateVertexData(_vertices);
+				//sub.updateUVData(_uvs);
+				//sub.updateVertexNormalData(_normals);
+				sub.updateVertexData(vertices);
+				sub.updateUVData(uvs);
+				sub.updateVertexNormalData(normals);
 				sub.updateIndexData(indices);
-				_mesh.subMeshes[_geometry.subGeometries.length - 1].material = new TextureMaterial(null, true, true);
+				
+				trace("Subset = "+i+" cant_vert = "+vertices.length);
+				
+				var mat : MaterialBase;
+				
+				if(FilePath.GetFileNameWithoutExtension(_materialNames[nro_mat]) != "")
+					//este layer tiene una texturaa
+					mat = MGTexturePool.getTexture(_materialNames[nro_mat]);// new TextureMaterial(null, true, true);
+				else
+				{
+					//Este layer tiene un color
+					mat = new ColorMaterial(_materialData[nro_mat].Diffuse,MGColorUtils.getA(_materialData[nro_mat].Diffuse)/255);
+				}
+				
+				//mat.lightPicker = new StaticLightPicker(MG3DGlobals.lights);
+				
+				_mesh.subMeshes[_geometry.subGeometries.length - 1].material = mat;
 				_mesh.subMeshes[_geometry.subGeometries.length - 1].material.bothSides = true;
-				sub.nroLayer = i;
+				sub.nroLayer = nro_mat;
 			}
 			
 			//le agrego un padre para que no lo dibuje en pantalla con la posicion 0,0,0
@@ -240,7 +329,15 @@ package away3d.loaders.parsers
 			
 			for (var i:int = 0; i < cant_atrib; i++)
 			{
-				_atributos.push(_byteData.readInt());
+				if(_byteData.bytesAvailable >= 4)
+				{
+					_atributos.push(_byteData.readInt());
+				}
+				else
+				{
+					_atributos.push(_atributos[_atributos.length-1]);
+				}
+					
 			}
 			
 			_parsedAtributos = true;			
@@ -251,10 +348,22 @@ package away3d.loaders.parsers
 			_indices = new Vector.<uint>();
 			
 			var cant_indices:int = _cant_faces * 3;
+			var i:int;
 			
-			for (var i:int = 0; i < cant_indices; i++)
+			if(_byteData.length - _byteData.position < cant_indices*4)
 			{
-				_indices.push(_byteData.readInt());
+				//es un mesh sin la informacion de los indices
+				for (i = 0; i < cant_indices; i++)
+				{
+					_indices.push(i);
+				}
+			}
+			else
+			{
+				for (i = 0; i < cant_indices; i++)
+				{
+					_indices.push(_byteData.readInt());
+				}
 			}
 
 			_parsedIndices = true;
@@ -269,11 +378,12 @@ package away3d.loaders.parsers
 			//numero de faces
 			_cant_faces = _byteData.readInt();
 			
+			//vertices
+			_cant_vertices = _byteData.readInt();//_cant_faces*3;
+			
 			//bytes por vertice
 			_sizeof_vertex = _byteData.readInt();
-			
-			//vertices
-			_cant_vertices = _cant_faces*3;			
+						
 			for (var i:int = 0; i < _cant_vertices; i++)
 			{
 				var x:Number = _byteData.readFloat();
@@ -292,11 +402,21 @@ package away3d.loaders.parsers
 				_normals.push(y);
 				_normals.push(-z);
 				
-				var u:Number = _byteData.readFloat();
-				var v:Number = _byteData.readFloat();
-				//_uvs.push(new UV(u, v));
-				_uvs.push(u);
-				_uvs.push(v);
+				if(_sizeof_vertex >= 32)
+				{
+					var u:Number = _byteData.readFloat();
+					var v:Number = _byteData.readFloat();
+					//_uvs.push(new UV(u, v));
+					_uvs.push(u);
+					_uvs.push(v);
+				}else
+				{
+					_uvs.push(0.0);
+					_uvs.push(0.0);
+				}
+				
+				if(_sizeof_vertex > 32)
+					_byteData.position = _byteData.position + _sizeof_vertex - 32;
 			}
 			
 			_parsedVertices = true;
@@ -308,9 +428,11 @@ package away3d.loaders.parsers
 			var url : String;
 			var name : String;
 			_materialNames = new Vector.<String>();
+			_materialData = new Vector.<MGMaterial>();
 			
 			//cantidad de layers
 			_cant_layers = _byteData.readInt();
+			trace("Mesh:" + _fileName +" cant_layers = "+_cant_layers);
 			for (var i:int = 0; i < _cant_layers; i++)
 			{
 				//nombre de la textura
@@ -321,21 +443,24 @@ package away3d.loaders.parsers
 				//url = "http://www.lepton.com.ar/download/armarius/texturas/05-nogal.jpg";
 				//url = "http://www.lepton.com.ar/download/armarius/texturas/05-nogal.bmp";
 				
-				_materialNames[i] = name;
+				//_materialNames[i] = name;
+				_materialNames[i] = url;
 				
-				if(name != "")
-					addDependency(name, new URLRequest(url));
+				//if(name != "")
+					//addDependency(name, new URLRequest(url));
 				
 				//material
-				//Material mat = new Material();
-				//mat.Diffuse = FileUtils.ReadVector4(fs);
-				//mat.Ambient = FileUtils.ReadVector4(fs);
-				//mat.Specular = FileUtils.ReadVector4(fs);
-				//mat.Emissive = FileUtils.ReadVector4(fs);
-				//mat.Power = br.ReadSingle();
+				var mat : MGMaterial = new MGMaterial();
+				mat.Diffuse = MGColorUtils.colorFromARGB(_byteData.readFloat()*255,_byteData.readFloat()*255,_byteData.readFloat()*255,_byteData.readFloat()*255);
+				mat.Ambient = MGColorUtils.colorFromARGB(_byteData.readFloat()*255,_byteData.readFloat()*255,_byteData.readFloat()*255,_byteData.readFloat()*255);
+				mat.Specular = MGColorUtils.colorFromARGB(_byteData.readFloat()*255,_byteData.readFloat()*255,_byteData.readFloat()*255,_byteData.readFloat()*255);
+				mat.Emissive = MGColorUtils.colorFromARGB(_byteData.readFloat()*255,_byteData.readFloat()*255,_byteData.readFloat()*255,_byteData.readFloat()*255);
+				mat.Power = _byteData.readFloat();
+				
+				_materialData[i] = mat;
 				
 				//leo 17 floats del material del subset
-				_byteData.readBytes(new ByteArray(), 0, 17*4);
+				//_byteData.readBytes(new ByteArray(), 0, 17*4);
 				
 			}
 			

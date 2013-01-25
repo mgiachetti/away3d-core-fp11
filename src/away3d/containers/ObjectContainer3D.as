@@ -99,6 +99,7 @@ package away3d.containers
 		private var _listenToSceneTransformChanged : Boolean;
 		private var _listenToSceneChanged : Boolean;
 		// visibility passed on from parents
+		public var disposable:Boolean = true; // @MOD VARIABLE MIA
 		
 		/**
 		 * @private
@@ -717,5 +718,22 @@ package away3d.containers
 					break;
 			}
 		}
+		
+		public function disposeAll() : void
+		{
+			if(!disposable)
+			{
+				if(parent != null)parent.removeChild(this);
+				return;
+			}
+			
+			
+			dispose();
+			for each(var o : ObjectContainer3D  in _children)
+			{
+				o.disposeAll();
+			}
+		}
+			
 	}
 }

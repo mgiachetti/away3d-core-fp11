@@ -26,6 +26,10 @@ package away3d.core.pick
 		}
 
 		protected function getCollisionUV( indexData:Vector.<uint>, uvData:Vector.<Number>, triangleIndex:uint, v:Number, w:Number, u:Number ):Point {
+			
+			if(uvData == null)
+				return new Point();
+			
 			var uv:Point = new Point();
 			var uvIndex:Number = indexData[ triangleIndex ] * 2;
 			var uv0:Vector3D = new Vector3D( uvData[ uvIndex ], uvData[ uvIndex + 1 ] );

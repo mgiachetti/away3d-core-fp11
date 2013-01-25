@@ -8,7 +8,9 @@ package away3d.entities
 	import away3d.core.pick.*;
 	import away3d.errors.*;
 	import away3d.library.assets.*;
-
+	
+	import com.mgsoft.mg3dengine.MGMath;
+	
 	import flash.geom.*;
 
 	use namespace arcane;
@@ -428,5 +430,105 @@ package away3d.entities
 			if (_controller)
 				_controller.update();
 		}
+		
+		
+		//@MOD: Funciones agregadas por mi
+		public function set size(newSize : Vector3D) : void
+		{
+			//setea el escalado en base a las dimensiones que tiene que tener
+			var actSize : Vector3D = new Vector3D(maxX - minX, maxY - minY, maxZ - minZ);
+			scaleX = newSize.x/actSize.x;
+			scaleY = newSize.y/actSize.y;
+			scaleZ = newSize.z/actSize.z;
+		}
+		
+		public function get size() : Vector3D
+		{
+			//setea el escalado en base a las dimensiones que tiene que tener
+			return new Vector3D((maxX - minX)*scaleX, (maxY - minY)*scaleY, (maxZ - minZ)*scaleZ);
+		}
+		
+		public function get scaleVector() : Vector3D
+		{
+			return new Vector3D(scaleX, scaleY, scaleZ);
+		}
+		
+		public function set scaleVector(value : Vector3D) : void
+		{
+			 scaleX = value.x;
+			 scaleY = value.y;
+			 scaleZ = value.z;
+		}
+		
+		public function get modelCenter() : Vector3D
+		{
+			return new Vector3D((maxX + minX)/2, (maxY + minY)/2, (maxZ + minZ)/2);
+		}
+		
+		public function get center() : Vector3D
+		{
+			var modCenter : Vector3D = modelCenter;
+			return transform.transformVector(modCenter);
+		}
+		
+		public function set center(newCenter : Vector3D) : void
+		{
+			var dif : Vector3D = newCenter.subtract(center);
+			position = position.add(dif);
+		}
+		
+		public function get actualMin() : Vector3D
+		{
+			var min: Vector3D = minPoint;
+			var max: Vector3D = maxPoint;
+			var p1: Vector3D = min.clone();
+			var p2: Vector3D = min.clone();
+			var tra : Matrix3D = transform;
+			
+			p1.z = max.z;
+			p2.x = max.x;
+			
+			var tmin : Vector3D = transform.transformVector(min);
+			var tmax : Vector3D = transform.transformVector(max);
+			var tp1 : Vector3D = transform.transformVector(p1);
+			var tp2 : Vector3D = transform.transformVector(p2);
+			
+			return MGMath.minVector3D(MGMath.minVector3D(tmin,tmax),MGMath.minVector3D(tp1,tp2));
+		}
+		
+		public function get actualMax() : Vector3D
+		{
+			var min: Vector3D = minPoint;
+			var max: Vector3D = maxPoint;
+			var p1: Vector3D = min.clone();
+			var p2: Vector3D = min.clone();
+			var tra : Matrix3D = transform;
+			
+			p1.z = max.z;
+			p2.x = max.x;
+			
+			var tmin : Vector3D = transform.transformVector(min);
+			var tmax : Vector3D = transform.transformVector(max);
+			var tp1 : Vector3D = transform.transformVector(p1);
+			var tp2 : Vector3D = transform.transformVector(p2);
+			
+			return MGMath.maxVector3D(MGMath.maxVector3D(tmin,tmax),MGMath.maxVector3D(tp1,tp2));
+		}
+		
+		public function get actualSize() : Vector3D
+		{
+			return actualMax.subtract(actualMin);
+		}
+		
+		public function get minPoint() : Vector3D
+		{
+			return new Vector3D(minX,minY,minZ);
+		}
+		
+		public function get maxPoint() : Vector3D
+		{
+			return new Vector3D(maxX,maxY,maxZ);
+		}
+		
 	}
 }

@@ -5,7 +5,9 @@ package away3d.bounds
 	import away3d.core.math.*;
 	import away3d.core.pick.*;
 	import away3d.primitives.*;
-
+	
+	import com.mgsoft.mg3dengine.primitives.MGCornerWireframeCube;
+	
 	import flash.geom.*;
 
 	use namespace arcane;
@@ -300,7 +302,8 @@ package away3d.bounds
 		}
 		
 		override protected function createBoundingRenderable():WireframePrimitiveBase {
-			return new WireframeCube( 1, 1, 1 );
+			//return new WireframeCube( 1, 1, 1 );
+			return new MGCornerWireframeCube( 1, 1, 1 );
 		}
 	}
 }

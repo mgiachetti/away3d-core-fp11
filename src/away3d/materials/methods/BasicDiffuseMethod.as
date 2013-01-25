@@ -255,9 +255,11 @@ package away3d.materials.methods
 				vo.fragmentConstantsIndex = cutOffReg.index*4;
 				var c : ShaderRegisterElement = cutOffReg;//regCache.getFreeFragmentConstant();
 				
-				var temp : String = "ft7";
+				//var temp : String = "ft7";
+				var temp : String = regCache.getFreeFragmentVectorTemp().toString();
 				
-				code += "div "+ t +".xy, "+ UVFragmentReg +".xy, "+ c +".y\n";
+				code += "mov "+ t +", "   + UVFragmentReg +"\n";
+				code += "div "+ t +".xy, "+ t +".xy, "+ c +".y\n";
 				code += "frc "+ t +".xy, "+ t +".xy\n";
 				
 				code += "sge "+ temp +".x, "+ t +".x, "+ c +".z\n";
@@ -265,14 +267,27 @@ package away3d.materials.methods
 				code += "slt "+ temp +".z, "+ t +".x, "+ c +".z\n";
 				code += "slt "+ temp +".w, "+ t +".y, "+ c +".z\n";
 				
-				code += "neg "+ temp +".xy, "+ temp +".xy\n";
+				//code += "neg "+ temp +".xy, "+ temp +".xy\n";
 				
-				code += "mul "+ temp +".x, "+ UVFragmentReg +".x, "+ temp +".x\n";
-				code += "mul "+ temp +".y, "+ UVFragmentReg +".y, "+ temp +".y\n";				
-				code += "mul "+ temp +".z, "+ UVFragmentReg +".x, "+ temp +".z\n";
-				code += "mul "+ temp +".w, "+ UVFragmentReg +".y, "+ temp +".w\n";
+				//code += "mul "+ temp +".x, "+ UVFragmentReg +".x, "+ temp +".x\n";
+				//code += "mul "+ temp +".y, "+ UVFragmentReg +".y, "+ temp +".y\n";				
+				//code += "mul "+ temp +".z, "+ UVFragmentReg +".x, "+ temp +".z\n";
+				//code += "mul "+ temp +".w, "+ UVFragmentReg +".y, "+ temp +".w\n";
 				
-				code += "add "+ t +".xy, "+ temp +".xy, "+ temp +".zw\n"; 				
+				code += "frc "+ t +".xy, "+ UVFragmentReg +".xy\n";
+				code += "sub "+ t +".z, "+ c +".w, "+ t +".x\n";
+				code += "sub "+ t +".w, "+ c +".w, "+ t +".y\n";
+				
+				code += "mul "+ temp +".x, "+ t +".z, "+ temp +".x\n";
+				code += "mul "+ temp +".y, "+ t +".w, "+ temp +".y\n";
+				code += "mul "+ temp +".z, "+ t +".x, "+ temp +".z\n";
+				code += "mul "+ temp +".w, "+ t +".y, "+ temp +".w\n";
+				
+								
+				code += "add "+ t +".xy, "+ temp +".xy, "+ temp +".zw\n";
+				
+				//expando un poco la textura para generar solape
+				//code += "mul "+ t +".xy, "+ t +".xy, "+ c +".w\n";
 				
 				code += getTexSampleCode(vo, t, _diffuseInputRegister, t);
 				if (_alphaThreshold > 0) {
@@ -327,8 +342,8 @@ package away3d.materials.methods
 				
 				vo.fragmentData[vo.fragmentConstantsIndex+0] = _alphaThreshold;
 				vo.fragmentData[vo.fragmentConstantsIndex+1] = 2;
-				vo.fragmentData[vo.fragmentConstantsIndex+2] = 0.5;
-				vo.fragmentData[vo.fragmentConstantsIndex+3] = 0;
+				vo.fragmentData[vo.fragmentConstantsIndex+2] = 0.4999999;
+				vo.fragmentData[vo.fragmentConstantsIndex+3] = 1.00;
 			}
 			else {
 				var index : int = vo.fragmentConstantsIndex;

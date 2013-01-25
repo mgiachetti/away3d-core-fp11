@@ -1,6 +1,5 @@
 ﻿package away3d.entities
 {
-	import away3d.materials.utils.DefaultMaterialManager;
 	import away3d.animators.IAnimator;
 	import away3d.arcane;
 	import away3d.containers.*;
@@ -9,6 +8,7 @@
 	import away3d.events.*;
 	import away3d.library.assets.*;
 	import away3d.materials.*;
+	import away3d.materials.utils.DefaultMaterialManager;
 
 	use namespace arcane;
 
@@ -316,6 +316,15 @@
 			}
 
 			return _pickingCollisionVO.renderable != null;
+		}
+		
+		public function getSubmesh(nro_layer:int):SubMesh
+		{
+			for each(var s :SubMesh in subMeshes)
+				if(s.subGeometry.nroLayer == nro_layer)
+					return s;
+			
+			return null;
 		}
 	}
 }

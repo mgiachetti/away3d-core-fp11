@@ -1,12 +1,16 @@
 package away3d.loaders.parsers
 {
 	import away3d.arcane;
+	import away3d.containers.ObjectContainer3D;
 	import away3d.core.base.Geometry;
 	import away3d.core.base.SubGeometry;
 	import away3d.entities.Mesh;
+	import away3d.events.AssetEvent;
 	import away3d.library.assets.IAsset;
 	import away3d.loaders.misc.ResourceDependency;
 	import away3d.materials.ColorMaterial;
+	import away3d.materials.DefaultMaterialBase;
+	import away3d.materials.MaterialBase;
 	import away3d.materials.TextureMaterial;
 	import away3d.materials.lightpickers.LightPickerBase;
 	import away3d.materials.lightpickers.StaticLightPicker;
@@ -17,15 +21,28 @@ package away3d.loaders.parsers
 	import away3d.materials.utils.DefaultMaterialManager;
 	import away3d.textures.BitmapTexture;
 	import away3d.textures.Texture2DBase;
+	import away3d.tools.commands.Merge;
 	
 	import com.mgsoft.mg3dengine.FilePath;
 	import com.mgsoft.mg3dengine.MG3DGlobals;
+	import com.mgsoft.mg3dengine.MGColorUtils;
+	import com.mgsoft.mg3dengine.MGMaterial;
+	import com.mgsoft.mg3dengine.MGMeshPool;
+	import com.mgsoft.mg3dengine.MGTexturePool;
 	
 	import flash.geom.Matrix3D;
+	import flash.net.FileReference;
 	import flash.net.URLRequest;
+	import flash.sampler.NewObjectSample;
 	import flash.utils.ByteArray;
+	import flash.utils.Endian;
+	import flash.utils.getTimer;
 	
 	import flashx.textLayout.factory.TruncationOptions;
+	
+	import mx.collections.ArrayList;
+	
+	import spark.primitives.Path;
 	
 
 	use namespace arcane;
@@ -35,11 +52,7 @@ package away3d.loaders.parsers
 	 */
 	public class ViewerParser extends ParserBase
 	{
-		private var _textData:String;
-		
-		private var _charIndex:int;
-		private var _oldIndex:int;
-		private var _stringLength:uint;
+		private var _byteData:ByteArray;
 		
 		//private var _currentObject : ObjectGroup;
 		//private var _currentGroup : Group;
@@ -61,6 +74,7 @@ package away3d.loaders.parsers
 		private var _indices : Vector.<uint>;
 		private var _vertices : Vector.<Number>;
 		private var _vertexNormals : Vector.<Number>;
+		private var _color : uint;
 		private var _uvs : Vector.<Number>;
 		private var _startedParsing : Boolean;
 		private var _parsedTextures:Boolean;
@@ -72,17 +86,20 @@ package away3d.loaders.parsers
 		private var texturasID:Vector.<String> = new Vector.<String>();
 		private var texturaXMesh:Vector.<int> = new Vector.<int>();
 		private var meshesID:Vector.<String> = new Vector.<String>();
+		private var meshesRequest:ArrayList = new ArrayList();
 		private var meshXMesh:Vector.<int> = new Vector.<int>();
 		private var worldmatXMesh:Vector.<Matrix3D> = new Vector.<Matrix3D>();
 		private var layersXMesh:Vector.<Vector.<int>> = new Vector.<Vector.<int>>();
-		private var texturas: Vector.<Texture2DBase> = new Vector.<Texture2DBase>();
+		private var layersMatXMesh:Vector.<Vector.<MGMaterial>> = new Vector.<Vector.<MGMaterial>>();
+		private var texturas: Vector.<TextureMaterial> = new Vector.<TextureMaterial>();
+		public var _objectContainer : ObjectContainer3D = new ObjectContainer3D(); //toda la escena queda cargada en este objectcontainer 
 		
 		/**
 		 * Loads a Viewer.dat Lepton File.
 		 */
 		public function ViewerParser()
 		{
-			super(ParserDataFormat.PLAIN_TEXT);			
+			super(ParserDataFormat.BINARY);			
 		}
 		
 		
@@ -102,91 +119,95 @@ package away3d.loaders.parsers
 		 */
 		override arcane function resolveDependency(resourceDependency:ResourceDependency):void
 		{
-			var extension :String = FilePath.GetExtension(resourceDependency.id).toLowerCase(); 
-			if (extension == '.msh' || extension == '.y' || extension == '.x') {
-				if (resourceDependency.assets.length != 1)
-					return;
-				
-				var mesh : Mesh = resourceDependency.assets[0] as Mesh;
-				
-				var idMesh:int = meshesID.indexOf(resourceDependency.id);
-				
-				if(idMesh == -1 || mesh == null)
-					return;
-				
-				
-				for (var i:int = 0; i < meshXMesh.length; i++) 
-				{
-					if(meshXMesh[i] == idMesh)
-					{
-						_meshes[i].geometry = mesh.geometry;
-						_meshes[i].material = mesh.material;
-						_meshes[i].bounds = mesh.bounds.clone();
-						_meshes[i].pivotPoint = mesh.pivotPoint.clone();
-						_meshes[i].partition = mesh.partition;
-						_meshes[i].transform = worldmatXMesh[i];
-						_meshes[i].showBounds = false;
+		}
+		
+		public function resolveMesh(event : AssetEvent):void
+		{
+			var mesh : Mesh = event.asset as Mesh;
+			
+			mesh.disposable = false;
+			
+			var idMesh:int = meshesID.indexOf(event.assetPrevName);
 						
-						for (var j:int = 0; j < _meshes[i].subMeshes.length; j++) 
+			if(idMesh != -1)
+				meshesRequest.removeItem(event.assetPrevName);
+			
+			if(meshesRequest.length == 0)
+			{
+				//Ya se cargaron todas las dependencias de mesh elimino el listener para que no me lleguen ecos de otros pedidos
+				MGMeshPool.removeEnventListener(AssetEvent.ASSET_COMPLETE, resolveMesh);
+			}
+			
+			if(idMesh == -1 || mesh == null)
+				return;
+			
+			meshesID[idMesh] = "";
+			
+			var mlength : int =  meshXMesh.length;
+			for (var i:int = 0; i < mlength; i++) 
+			{
+				if(meshXMesh[i] == idMesh)
+				{
+					_meshes[i].geometry = mesh.geometry;
+					_meshes[i].material = mesh.material;
+					_meshes[i].bounds = mesh.bounds;
+					_meshes[i].pivotPoint = mesh.pivotPoint;
+					_meshes[i].partition = mesh.partition;
+					_meshes[i].transform = worldmatXMesh[i];
+					_meshes[i].showBounds = false;
+					_meshes[i].disposable = false;
+					
+					var slength : int = _meshes[i].subMeshes.length;
+					for (var j:int = 0; j < slength; j++) 
+					{
+						var layer_tex : int = -1;
+						var mat : MGMaterial = null;
+						var nro_layer:int = _meshes[i].geometry.subGeometries[j].nroLayer;
+						
+						var llength : int = layersXMesh[i].length;
+						if(nro_layer < llength)
 						{
-							var layer_tex : int = layersXMesh[i][_meshes[i].geometry.subGeometries[j].nroLayer];
-							if(layer_tex == -1)
-							{
-								_meshes[i].subMeshes[j].material = mesh.subMeshes[j].material;
-								_meshes[i].subMeshes[j].material.bothSides = true;
-							}
-							else
-							{
-								//tiene una textura propia el layer
-								_meshes[i].subMeshes[j].material = new TextureMaterial(texturas[layer_tex], true,true);
-								_meshes[i].subMeshes[j].material.bothSides = true;
-							}
-							
-							
+							layer_tex = layersXMesh[i][nro_layer];
+							mat = layersMatXMesh[i][nro_layer];
 						}
 						
+						//var layer_tex : int = -1;
+						if(layer_tex == -1)
+						{
+							_meshes[i].subMeshes[j].material = mesh.subMeshes[j].material;							
+							_meshes[i].subMeshes[j].material.bothSides = true;
+						}
+						else
+						{
+							//tiene una textura propia el layer
+							_meshes[i].subMeshes[j].material = texturas[layer_tex];
+							_meshes[i].subMeshes[j].material.bothSides = true;
+						}
 						
-						//var mat:Matrix3D = new Matrix3D();
-						//mat.appendTranslation(300,200,1000);
-						//_meshes[i].transform = mat;
-						//_meshes[i].moveForward(1000);
-						//finalizeAsset(_meshes[i]);
+						if(mat != null)
+						{
+							var material : DefaultMaterialBase = _meshes[i].subMeshes[j].material as DefaultMaterialBase;
+							material.ambientColor = mat.Ambient;
+							material.specularColor = mat.Specular;
+							var alpha : Number = MGColorUtils.getA(mat.Ambient)/255.0;
+							if(material is ColorMaterial)
+							{
+								(material as ColorMaterial).color = mat.Ambient;
+								(material as ColorMaterial).alpha = alpha;
+								//(material as ColorMaterial).alpha = 1-mat.TransparencyLevel;
+							}
+							else
+								//(material as TextureMaterial).alpha = 1-mat.TransparencyLevel;
+								(material as TextureMaterial).alpha = alpha;
+						}
+						 
 					}
 					
 				}
 				
 			}
-			else {
 				
-				if (resourceDependency.assets.length != 1)
-					return;
-				
-				
-				var asset : Texture2DBase = resourceDependency.assets[0] as Texture2DBase;
-				
-				var idtext:int = texturasID.indexOf(resourceDependency.id);
-				
-				if(idtext == -1 || asset == null)
-					return;
-				
-				texturas[idtext] = asset;
-				
-							
-				for (i = 0; i < texturaXMesh.length; i++) 
-				{
-					if(texturaXMesh[i] == idtext)
-					{
-						_meshes[i].subMeshes[0].material = new TextureMaterial(asset, true, true);
-						_meshes[i].subMeshes[0].material.bothSides = true;
-						//trace(Globals.lights);
-						//_meshes[i].subMeshes[0].material.lightPicker = new StaticLightPicker(MG3DGlobals.lights);
-						//((_meshes[i].subMeshes[0].material) as TextureMaterial).shadowMethod = MG3DGlobals.shadowMethod;
-						
-					}
-					
-				}
-				
-			}
+			
 		}
 		
 		/**
@@ -203,7 +224,12 @@ package away3d.loaders.parsers
 		override protected function proceedParsing() : Boolean
 		{
 			if(!_startedParsing)
-				_textData = getTextData();
+			{
+				_byteData = getByteData();
+				_byteData.endian = Endian.LITTLE_ENDIAN;
+				//(new FileReference()).save(_byteData,"escenaBIN.dat");
+				//return true;
+			}
 			
 			
 			if(!_startedParsing){
@@ -213,9 +239,6 @@ package away3d.loaders.parsers
 				
 				clearMeshData();
 				
-				_stringLength = _textData.length;
-				_charIndex = 0;
-				_oldIndex = 0;
 				_objectIndex = 0;
 			}
 			
@@ -236,6 +259,8 @@ package away3d.loaders.parsers
 					}
 					else
 					{
+						MergeMeshes();
+						fetchMeshes();
 						return PARSING_DONE;
 					}								
 					
@@ -243,6 +268,27 @@ package away3d.loaders.parsers
 			}
 			
 			return MORE_TO_PARSE;
+		}
+		
+		private function fetchMeshes():void
+		{
+			if(meshesID.length == 0)
+				return;
+			
+			MGMeshPool.addEventListener(AssetEvent.ASSET_COMPLETE,resolveMesh);
+			
+			for each (var m : String in meshesID)
+				meshesRequest.addItem(m);
+			
+			for each (m in meshesID)
+			{
+				//var file:String = FilePath.ChangeExtension(m, ".y");
+				//saco el fullpath
+				//file = file.substring(file.lastIndexOf("texturas") + 9);
+				
+				MGMeshPool.getMesh(m);
+			}
+			
 		}
 		
 		private function clearMeshData():void
@@ -259,44 +305,40 @@ package away3d.loaders.parsers
 		{
 			//Faces
 			//<FACES>
-			var lineTokens:Array = getLineTokens();
-			
 			// Cantidad de Faces
-			lineTokens = getLineTokens();
-			_cant_faces = parseInt(lineTokens[0]);
+			
+			_cant_faces = _byteData.readInt();
 			for (var i:int = 0; i < _cant_faces; i++)
 			{
 				layersXMesh.push(null);
-				
-				//<FACE {i+1}>
-				lineTokens = getLineTokens();
+				layersMatXMesh.push(null);
 				
 				//tipo Face, Triangulo(3) o Rectangulo(1)
-				lineTokens = getLineTokens();
-				var tipo_face:int = parseInt(lineTokens[0]);
+				var tipo_face:int = _byteData.readByte();
+				
+				//3 byte de relleno (alineacion)
+				_byteData.readByte();
+				_byteData.readByte();
+				_byteData.readByte();
 				
 				for (var j:int = 0; j < 4; j++)
 				{
 					//Vertices
 					
 					//Posicion
-					lineTokens = getLineTokens();
 					if(tipo_face == 1 || j < 4)						
-						parsePosition(lineTokens);
+						parsePosition();
 					
 					//Normal
-					lineTokens = getLineTokens();
 					if(tipo_face == 1 || j < 4)
-						parseNormals(lineTokens);
-					
-					//UV
-					lineTokens = getLineTokens();
-					if(tipo_face == 1 || j < 4)
-						parseUVs(lineTokens);
+						parseNormals();
 					
 					//color					
-					lineTokens = getLineTokens();
-					var color :uint = parseInt(lineTokens[0]);
+					_color = _byteData.readUnsignedInt();
+					
+					//UV
+					if(tipo_face == 1 || j < 4)
+						parseUVs();
 					
 				}
 				
@@ -306,141 +348,107 @@ package away3d.loaders.parsers
 					addTriagleIndex(0,2,3);
 				
 				//id
-				lineTokens = getLineTokens();
-				var face_id:int = parseInt(lineTokens[0]);
+				var face_id:int = _byteData.readInt();
 				
 				// Borde
 				// Esta variable deberia ser BYTE
-				lineTokens = getLineTokens();
-				var borde:int = parseInt(lineTokens[0]);
+				var borde:int = _byteData.readByte();
+				
+				//3 byte de relleno (alineacion)
+				_byteData.readByte();
+				_byteData.readByte();
+				_byteData.readByte();
 				
 				//nro_mesh, -1 si no es mesh
-				lineTokens = getLineTokens();
-				var nro_mesh:int = parseInt(lineTokens[0]);
+				var nro_mesh:int = _byteData.readInt();
 				
 				//nro de textura
-				lineTokens = getLineTokens();
-				var nro_textura:int = parseInt(lineTokens[0]);
+				var nro_textura:int = _byteData.readByte();
+				
+				//3 byte de relleno (alineacion)
+				_byteData.readByte();
+				_byteData.readByte();
+				_byteData.readByte();
 				
 				// parametros de iluminacion
-				lineTokens = getLineTokens();
-				var kd:Number = parseFloat(lineTokens[0]);
-				var ks:Number = parseFloat(lineTokens[1]);
-				var kr:Number = parseFloat(lineTokens[2]);
-				var kt:Number = parseFloat(lineTokens[3]);
+				var kd:Number = _byteData.readFloat();
+				var ks:Number = _byteData.readFloat();
+				var kr:Number = _byteData.readFloat();
+				var kt:Number = _byteData.readFloat();
 				
 				var world : Matrix3D = new Matrix3D();
 				if(nro_mesh != -1)
 				{
 					//es un mesh
 					//<MESH_INSTANCE {idmesh}>
-					lineTokens = getLineTokens();
-					
+
 					//Cant Layers
-					lineTokens = getLineTokens();
-					var cant_layers:int = parseInt(lineTokens[0]);
+					var cant_layers:int = _byteData.readByte();
+					
+					//3 byte de relleno (alineacion)
+					_byteData.readByte();
+					_byteData.readByte();
+					_byteData.readByte();
 					
 					//WordMatrix
-					var row1:Array, row2:Array, row3:Array, row4:Array;
-					row1 = getLineTokens();
-					row2 = getLineTokens();
-					row3 = getLineTokens();
-					row4 = getLineTokens();
-					world = parseMatrix(row1, row2, row3, row4);
-					
+					world = parseMatrix();
 					
 					var texXLayer: Vector.<int> = new Vector.<int>();
+					var matXLayer: Vector.<MGMaterial> = new Vector.<MGMaterial>();
 					//layers
 					for(j = 0; j < cant_layers; j++)
 					{
 						//nro layer
-						lineTokens = getLineTokens();
-						var nro_layer:int = parseInt(lineTokens[0]);
+						var nro_layer:int = _byteData.readByte();
 						
-						//ambient color
-						lineTokens = getLineTokens();
-						//Vector4 ambient = parseVector4(lineTokens);
+						//3 byte de relleno (alineacion)
+						_byteData.readByte();
+						_byteData.readByte();
+						_byteData.readByte();
 						
-						//diffuse color
-						lineTokens = getLineTokens();
-						//Vector4 diffuse = ParseVector4(lineTokens);
-						
-						//specular color
-						lineTokens = getLineTokens();
-						//Vector4 specular = ParseVector4(lineTokens);
+						//material
+						var mat : MGMaterial = new MGMaterial();
+						mat.Diffuse = MGColorUtils.colorFromARGB(_byteData.readFloat()*255,_byteData.readFloat()*255,_byteData.readFloat()*255,_byteData.readFloat()*255);
+						mat.Ambient = MGColorUtils.colorFromARGB(_byteData.readFloat()*255,_byteData.readFloat()*255,_byteData.readFloat()*255,_byteData.readFloat()*255);
+						mat.Specular = MGColorUtils.colorFromARGB(_byteData.readFloat()*255,_byteData.readFloat()*255,_byteData.readFloat()*255,_byteData.readFloat()*255);
+						mat.Emissive = MGColorUtils.colorFromARGB(_byteData.readFloat()*255,_byteData.readFloat()*255,_byteData.readFloat()*255,_byteData.readFloat()*255);
+						mat.Power = _byteData.readFloat();
 						
 						//Coefcientes luz
-						lineTokens = getLineTokens();
-						var l_kr:Number = parseFloat(lineTokens[0]);
-						var l_ks:Number = parseFloat(lineTokens[1]);
+						mat.TransparencyLevel = _byteData.readFloat();
+						mat.SpecularLevel = _byteData.readFloat();
 						
 						//textura Propia
-						lineTokens = getLineTokens();
-						var textura_propia:int = parseInt(lineTokens[0]);
+						var textura_propia:int = _byteData.readByte();
 						
 						//Nro Textura
-						lineTokens = getLineTokens();
-						var l_nro_textura:int = parseInt(lineTokens[0]);
+						var l_nro_textura:int = _byteData.readByte();
+						
+						//2 byte de relleno (alineacion)
+						_byteData.readByte();
+						_byteData.readByte();
 						
 						//if (l_nro_textura >= 0 && l_nro_textura < textures.Count && textura_propia > 0 && textures[l_nro_textura] != null)
 						//meshPool[nro_mesh].Subsets[i].Texture = textures[l_nro_textura];
 						//    meshPool[nro_mesh].Subsets[i].Texture = Globals.Instance.TexturePool.Textures[l_nro_textura];
 						
-						texXLayer.push(textura_propia? l_nro_textura : -1);
+						if(textura_propia == 0)
+							mat = null;
 						
+						texXLayer.push(textura_propia? l_nro_textura : -1);
+						matXLayer.push(mat);
 					}
 					
 					layersXMesh[i] = texXLayer;
+					layersMatXMesh[i] = matXLayer;
 					
 					//Fin mesh
 					//</MESH_INSTANCE>
-					lineTokens = getLineTokens();;
-					
 				}
 
 				
 				//Fin Face
 				//</FACE>
-				lineTokens = getLineTokens();
-				
-				//aca se crea el mesh
-				
-				//MeshSubset ms = new MeshSubset(2, 4, 0, 0, VertexPositionColorNormalTexture.VertexDeclaration, device);
-				//ms.VertexBuffer.SetData(vertices);
-				
-				/*ushort [] index;
-				if (tipo_face == 1)
-					//rectangulo
-					index = new ushort[] { 0, 1, 2, 0, 2, 3 };
-				else
-				{
-					//triangulo, Repito dos veces el mismo triangulo
-					index = new ushort[] { 0, 1, 2, 0, 1, 2 };
-					//piso el vertice que esta en 0,0,0 para que no arruine el boundingbox
-					vertices[3] = vertices[0];
-				}
-				
-				ms.IndexBuffer.SetData(index);
-				
-				if (nro_textura >= 0)
-					//ms.Texture = textures[nro_textura];
-					ms.Texture = Globals.Instance.TexturePool.Textures[nro_textura];
-				Mesh mesh = new Mesh();
-				mesh.Subsets.Add(ms);
-				mesh.BoundingBox = BoundingBox.CreateFromPoints(MeshUtils.getVertexPositions(vertices));
-				
-				if (nro_mesh == -1)
-					meshes.Add(mesh);
-				else
-				{
-					//meshes
-					//Mesh m = new Mesh();
-					//m.Subsets = meshPool[nro_mesh].Subsets;
-					mesh.Subsets = Globals.Instance.MeshPool.Meshes[nro_mesh].Subsets;
-					mesh.worldMatrix = world;
-					
-					meshes.Add(mesh);
-				}*/
 				
 				texturaXMesh.push(nro_textura);
 				meshXMesh.push(nro_mesh);
@@ -464,6 +472,7 @@ package away3d.loaders.parsers
 		private function buildMesh():void
 		{
 			// TODO Auto Generated method stub
+			var start : int = getTimer();
 			var mesh:Mesh;
 			var geometry: Geometry = new Geometry();
 			var subGeometry : SubGeometry = new SubGeometry();
@@ -475,9 +484,15 @@ package away3d.loaders.parsers
 			
 			geometry.addSubGeometry(subGeometry);
 			mesh = new Mesh(geometry);
-			mesh.material = new TextureMaterial( DefaultMaterialManager.getDefaultTexture(), true, true );
+			//mesh.material = new TextureMaterial( DefaultMaterialManager.getDefaultTexture(), true, true );
+			var tex_ind : int = texturaXMesh[texturaXMesh.length-1];
+			mesh.material = tex_ind >= 0 ? texturas[tex_ind] : new ColorMaterial(_color, MGColorUtils.getA(_color)/255.0);
+			if(mesh.material is TextureMaterial)
+			{
+				(mesh.material as TextureMaterial).alpha = MGColorUtils.getA(_color)/255.0;
+			}
 			//mesh.material = new ColorMaterial(100*_meshes.length);
-			mesh.material.bothSides = true;
+			//mesh.material.bothSides = true;
 			
 			mesh.name = "face-"+_meshes.length;
 			_meshes.push(mesh);
@@ -485,31 +500,64 @@ package away3d.loaders.parsers
 			//vacio los vectores
 			clearMeshData();
 			
-			//if (meshXMesh[meshXMesh.length-1] == 4)
-			finalizeAsset(mesh);
+			//trace("BuildMesh: "+ (getTimer() - start));
 			
+			//if (meshXMesh[meshXMesh.length-1] == 4)
+			//finalizeAsset(mesh);
+			
+		}
+		
+		private function MergeMeshes():void
+		{
+			// TODO Auto Generated method stub
+			var start : int = getTimer();
+			var merge : Merge = new Merge(true);
+			var bigMesh : Mesh = new Mesh(new Geometry());
+			var meshes : Vector.<Mesh> = new Vector.<Mesh>();
+			
+			for (var i:int = 0; i < meshXMesh.length; i++) 
+			{
+				if(meshXMesh[i] != -1)
+				{
+					//finalizeAsset(_meshes[i]);
+					_objectContainer.addChild(_meshes[i]);
+					continue;
+				}
+				
+				meshes.push(_meshes[i]);
+			}
+			
+			merge.applyToMeshes(bigMesh, meshes);
+			
+			trace("Merge: "+ (getTimer() - start));
+			
+			_objectContainer.addChild(bigMesh);
+			//finalizeAsset(bigMesh);
+			finalizeAsset(_objectContainer);
 		}
 		
 		protected function parseMeshes():void
 		{
 			//Meshes
 			//<MESHES>
-			var lineTokens:Array = getLineTokens();
 			
 			//cantidad de meshes
-			lineTokens = getLineTokens();
-			_cant_meshes = parseInt(lineTokens[0]);
+			_cant_meshes = _byteData.readInt();
 			for (var i:int = 0; i < _cant_meshes; i++)
 			{
 				//Meshes Path
-				lineTokens = getLineTokens();
+					
+				var file:String = _byteData.readMultiByte(260, "iso-8859-1");
 				
-				var file:String = FilePath.ChangeExtension(lineTokens[0], ".y");
+				file = FilePath.ChangeExtension(file, ".y");
 				//saco el fullpath
-				file = file.substring(file.lastIndexOf("texturas") + 9);
+				//file = file.substring(file.lastIndexOf("texturas") + 9);
+				file = file.substring(file.lastIndexOf("texturas"));
+				//file = MG3DGlobals.TEXTURE_FOLDER + file
 				
-				meshesID.push(lineTokens[0]);
-				addDependency(lineTokens[0], new URLRequest(MG3DGlobals.TEXTURE_FOLDER + file));
+				//meshesID.push(lineTokens[0]);
+				meshesID.push(file);
+				//addDependency(lineTokens[0], new URLRequest(MG3DGlobals.TEXTURE_FOLDER + file));
 				
 				//string path = @"c:\test\" + Path.GetFileNameWithoutExtension(lineTokens[0]) + ".y";
 				//string path = lineTokens[0];
@@ -521,129 +569,117 @@ package away3d.loaders.parsers
 			}
 			//Fin Meshes
 			//</MESHES>
-			lineTokens = getLineTokens();
 			
 			_parsedMeshes = true;
 		}
 		
 		protected function parseTextures():void
 		{
+			//primero parseo el Header
+			var head : String = _byteData.readMultiByte(10, "iso-8859-1"); // aca tiene que decir LEPTONVIEW
+			var version : int =  _byteData.readInt(); // version 1;
+			
 			//Texturas
 			//primera linea <TEXTURAS>
-			var lineTokens:Array = getLineTokens();
 			
 			//cantidad de texturas
-			lineTokens = getLineTokens();
-			_cant_texturas = parseInt(lineTokens[0]);
+			_cant_texturas = _byteData.readInt();
 			for(var i:int = 0 ; i < _cant_texturas; i++)
 			{
 				//Texture Path
-				lineTokens = getLineTokens();
 				
 				//saco el fullpath
-				var file:String = lineTokens[0];
+				var fileName:String = _byteData.readMultiByte(260, "iso-8859-1");
+				var bmp_k : int = _byteData.readInt();
+				
+				var file:String = fileName;
 				file = file.substring(file.lastIndexOf("texturas") + 9);				
 				
-				texturasID.push(lineTokens[0]);
+				texturasID.push(fileName);
 				texturas.push(null);
 				
-				if(FilePath.GetExtension(file).toLowerCase() != ".msh")
+				var ext : String = FilePath.GetExtension(file).toLowerCase();
+				if(ext != ".msh" && ext != ".dxf" && ext != ".x")
 				{
-					file = FilePath.ChangeExtension(file,".jpg");
-					addDependency(lineTokens[0], new URLRequest(MG3DGlobals.TEXTURE_FOLDER + file));
+					//addDependency(lineTokens[0], new URLRequest(MG3DGlobals.TEXTURE_FOLDER + file));
+					texturas[texturas.length-1] = MGTexturePool.getTexture(MG3DGlobals.TEXTURE_FOLDER + file);
 				}
 				
-				
-				//Texture2D tex = ResourceUtils.GetTexture(Globals.Instance.D3dDevice, lineTokens[0]);
-				//textures.Add(tex);
-				//	Globals.Instance.TexturePool.GetTexture(lineTokens[0]);
 			}
 			
 			//Fin Texturas
 			//</TEXTURAS>
-			lineTokens = getLineTokens();
 			_parsedTextures = true;
 			
 		}
 		
-		protected function getLineTokens():Array
+		protected function parsePosition() : void
 		{
-			_charIndex = _textData.indexOf("\r", _oldIndex);
+			var x:Number = _byteData.readFloat();
+			var z:Number = _byteData.readFloat();
+			var y:Number = _byteData.readFloat();
 			
-			if(_charIndex == -1)
-				_charIndex = _textData.indexOf("\n", _oldIndex);
-			
-			if(_charIndex == -1)
-				_charIndex = _stringLength;
-			
-			var line:String = _textData.substring(_oldIndex, _charIndex);
-			line = line.replace("\r","").replace("\n","").replace(/\[/g, "").replace(/\]/g, "").replace(/\"/g,"");
-			
-			_oldIndex = _charIndex + 1;
-			
-			return line.split(",");
-		}
-		
-		
-		protected function parsePosition(tokens : Array ) : void
-		{
-			var x:Number = parseFloat(tokens[1]);
-			var y:Number = parseFloat(tokens[2]);
-			var z:Number = parseFloat(tokens[0]);
+			//var z:Number = _byteData.readFloat();
+			//var x:Number = _byteData.readFloat();
+			//var y:Number = _byteData.readFloat();
 			
 			_vertices.push(x);
 			_vertices.push(y);
 			_vertices.push(-z);
 		}
 		
-		protected function parseNormals(tokens : Array ) : void
+		protected function parseNormals() : void
 		{
-			var x:Number = parseFloat(tokens[1]);
-			var y:Number = parseFloat(tokens[2]);
-			var z:Number = parseFloat(tokens[0]);
+			var x:Number = _byteData.readFloat();
+			var z:Number = _byteData.readFloat();
+			var y:Number = _byteData.readFloat();
 			
 			_vertexNormals.push(x);
 			_vertexNormals.push(y);
 			_vertexNormals.push(-z);
 		}
 		
-		protected function parseUVs(tokens : Array ) : void
+		protected function parseUVs() : void
 		{
-			var u:Number = parseFloat(tokens[0]);
-			var v:Number = parseFloat(tokens[1]);
-			
+			var u:Number = _byteData.readFloat();
+			var v:Number = _byteData.readFloat();
 			
 			_uvs.push(u);
 			_uvs.push(v);
 		}
 		
-		protected function parseMatrix(row1:Array, row2:Array, row3:Array, row4:Array):Matrix3D
+		protected function parseMatrix():Matrix3D
 		{
-			/*return new Matrix(
-			ParseFloat(row1[0]), ParseFloat(row1[1]), ParseFloat(row1[2]), ParseFloat(row1[3]),
-			ParseFloat(row2[0]), ParseFloat(row2[1]), ParseFloat(row2[2]), ParseFloat(row2[3]),
-			ParseFloat(row3[0]), ParseFloat(row3[1]), ParseFloat(row3[2]), ParseFloat(row3[3]),
-			ParseFloat(row4[0]), ParseFloat(row4[1]), ParseFloat(row4[2]), ParseFloat(row4[3])
-			);*/
-			/*return new Matrix(
-				ParseFloat(row1[0]), ParseFloat(row1[2]), ParseFloat(row1[1]), ParseFloat(row1[3]),
-				ParseFloat(row3[0]), ParseFloat(row3[2]), ParseFloat(row2[2]), ParseFloat(row2[3]),
-				ParseFloat(row2[0]), ParseFloat(row3[1]), ParseFloat(row2[1]), ParseFloat(row3[3]),
-				ParseFloat(row4[0]), ParseFloat(row4[2]), ParseFloat(row4[1]), ParseFloat(row4[3])
-			);*/
 			
-			
-			var matdata : Vector.<Number> = Vector.<Number>([
+			/*var matdata : Vector.<Number> = Vector.<Number>([
 				parseFloat(row1[0]), parseFloat(row1[2]), -parseFloat(row1[1]), parseFloat(row1[3]),
 				parseFloat(row3[0]), parseFloat(row3[2]), parseFloat(row2[2]), parseFloat(row2[3]),
 				-parseFloat(row2[0]), parseFloat(row3[1]), parseFloat(row2[1]), parseFloat(row3[3]),
 				parseFloat(row4[0]), parseFloat(row4[2]), -parseFloat(row4[1]), parseFloat(row4[3])
+			]);*/
+			
+			
+			var rows : Vector.<Vector.<Number>> = new Vector.<Vector.<Number>>();
+			
+			for(var i : int = 0 ; i < 4 ; i++)
+			{
+				rows.push(new Vector.<Number>());
+				for(var j : int = 0 ; j < 4 ; j++)
+				{
+					rows[i].push(_byteData.readFloat());			
+				}
+			}
+			
+			var matdata : Vector.<Number> = Vector.<Number>([
+				rows[0][0], rows[0][2], -rows[0][1], rows[0][3],
+				rows[2][0], rows[2][2], -rows[2][1], rows[1][3],
+				-rows[1][0], -rows[1][2], rows[1][1], rows[2][3],
+				rows[3][0], rows[3][2], -rows[3][1], rows[3][3]
 			]);
 			
 			var mat:Matrix3D = new Matrix3D(matdata)
 			
 			return mat;			
-			
 		}
 		
 	}

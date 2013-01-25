@@ -281,6 +281,7 @@ package away3d.core.base
 		public function dispose() : void
 		{
 			material = null;
+			subGeometry.dispose();
 		}
 
 		public function get vertexBufferOffset() : int
